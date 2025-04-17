@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>test</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@mdi/font@6.9.96/css/materialdesignicons.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.css">    <!-- Markdown 编辑器 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.7.0/build/styles/github.min.css"><!-- 设置代码高亮 -->
+</head>
+<body>
+    <div id="app">
+        <!-- 导航栏设计 -->
+        <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="#">CSSDN</a> <!-- 导航栏第一项CSSDN表明网站简称 Collage Student Software Developer Network -->
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav me-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" @click="currentView = 'home'">首页</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" @click="currentView = 'search'">搜索</a>
+                        </li>
+                        <li class="nav-item" v-if="isAuthenticated">
+                            <a class="nav-link" href="#" @click="currentView = 'create'">写博客</a>
+                        </li>
+                    </ul>
+                    <div class="d-flex">
+                        <template v-if="!isAuthenticated">
+                            <button class="btn btn-outline-light me-2" @click="currentView = 'login'">登录</button>
+                            <button class="btn btn-light" @click="currentView = 'register'">注册</button>
+                        </template>
+                        <template v-else>
+                            <div class="dropdown">
+                                <button class="btn btn-light dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown">
+                                    <img :src="user.avatar || 'https://via.placeholder.com/30'" class="rounded-circle me-1" width="30" height="30">
+                                    {{ user.username }}
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="#" @click="currentView = 'profile'">个人中心</a></li>
+                                    <li><a class="dropdown-item" href="#" @click="logout">退出登录</a></li>
+                                </ul>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        
+        <!-- 主内容区 -->
+        <main class="container my-4">
+            <!-- 首页 -->
+            <div v-if="currentView === 'home'">
+                <h2 class="mb-4">最新发表</h2> <!-- 最新发表的文章 -->
+                <div class="row">
+                    <div class="col-md-4 mb-4" v-for="post in posts" :key="post.id">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ post.title }}</h5>
+                                <p class="card-text text-muted">{{ post.description }}</p>
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary me-1" v-for="tag in post.tags" :key="tag">{{ tag }}</span>
+                                </div>
+                            </div>
+                            <div class="card-footer bg-transparent">
+                                <small class="text-muted">发布于 {{ formatDate(post.created_at) }}</small>
+                                <button class="btn btn-sm btn-outline-primary float-end" @click="viewPost(post.id)">阅读</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 登录 -->
+            <div v-if="currentView === 'login'" class="row justify-content-center">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h3 class="card-title text-center mb-4">登录</h3>
+                            <form @submit.prevent="handleLogin">
+                                <div class="mb-3">
+                                    <label for="loginUsername" class="form-label">用户名</label>
+                                    <input type="text" class="form-control" id="loginUsername" v-model="loginForm.username" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="loginPassword" class="form-label">密码</label>
+                                    <input type="password" class="form-control" id="loginPassword" v-model="loginForm.password" required>
+                                </div>
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-primary">登录</button>
+                                </div>
+                                <div class="text-center mt-3">
+                                    <a href="#" @click="currentView = 'register'">没有账号？立即注册</a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 注册 -->
+            <div v-if="currentView === 'register'" class="row justify-content-center">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h3 class="card-title text-center mb-4">注册</h3>
+                            <form @submit.prevent="handleRegister">
+                                <div class="mb-3">
+                                    <label for="registerUsername" class="form-label">用户名</label>
+                                    <input type="text" class="form-control" id="registerUsername" v-model="registerForm.username" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="registerPassword" class="form-label">密码</label>
+                                    <input type="password" class="form-control" id="registerPassword" v-model="registerForm.password" required>
+                                    <div class="form-text">密码至少需要8位字符</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="registerConfirmPassword" class="form-label">确认密码</label>
+                                    <input type="password" class="form-control" id="registerConfirmPassword" v-model="registerForm.confirmPassword" required>
+                                </div>
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-primary">注册</button>
+                                </div>
+                                <div class="text-center mt-3">
+                                    <a href="#" @click="currentView = 'login'">已有账号？立即登录</a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 创建博客 -->
+            <div v-if="currentView === 'create'">
+                <h2 class="mb-4">创建新博客</h2>
+                <form @submit.prevent="handleCreatePost">
+                    <div class="mb-3">
+                        <label for="postTitle" class="form-label">标题</label>
+                        <input type="text" class="form-control" id="postTitle" v-model="postForm.title" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="postDescription" class="form-label">简介</label>
+                        <textarea class="form-control" id="postDescription" v-model="postForm.description" rows="2" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="postTags" class="form-label">标签（用逗号分隔）</label>
+                        <input type="text" class="form-control" id="postTags" v-model="postForm.tags">
+                    </div>
+                    <div class="mb-3">
+                        <label for="postContent" class="form-label">内容（支持Markdown）</label>
+                        <textarea id="postContent" v-model="postForm.content"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="postFiles" class="form-label">上传文件（可选）</label>
+                        <input type="file" class="form-control" id="postFiles" multiple @change="handleFileUpload">
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">发布</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- 搜索 -->
+            <div v-if="currentView === 'search'">
+                <h2 class="mb-4">搜索博客</h2>
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <form @submit.prevent="handleSearch">
+                            <div class="row">
+                                <div class="col-md-8 mb-3">
+                                    <input type="text" class="form-control" placeholder="输入关键词..." v-model="searchQuery">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <button type="submit" class="btn btn-primary w-100">搜索</button>
+                                </div>
+                            </div>
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="advancedSearch" v-model="advancedSearch">
+                                <label class="form-check-label" for="advancedSearch">高级搜索</label>
+                            </div>
+                            <div v-if="advancedSearch" class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">开始日期</label>
+                                    <input type="date" class="form-control" v-model="searchStartDate">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">结束日期</label>
+                                    <input type="date" class="form-control" v-model="searchEndDate">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">排序方式</label>
+                                    <select class="form-select" v-model="searchSort">
+                                        <option value="newest">最新发布</option>
+                                        <option value="oldest">最早发布</option>
+                                        <option value="popular">点击量最高</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <div v-if="searchResults.length > 0">
+                    <h4 class="mb-3">搜索结果</h4>
+                    <div class="list-group">
+                        <a href="#" class="list-group-item list-group-item-action" v-for="result in searchResults" :key="result.id" @click="viewPost(result.id)">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1">{{ result.title }}</h5>
+                                <small>{{ formatDate(result.created_at) }}</small>
+                            </div>
+                            <p class="mb-1">{{ result.description }}</p>
+                            <small>
+                                <span class="badge bg-secondary me-1" v-for="tag in result.tags" :key="tag">{{ tag }}</span>
+                            </small>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 个人中心 -->
+            <div v-if="currentView === 'profile'">
+                <h2 class="mb-4">个人中心</h2>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <img :src="profileForm.avatar || 'https://via.placeholder.com/150'" class="rounded-circle mb-3" width="150" height="150">
+                                <input type="file" class="form-control mb-3" @change="handleAvatarUpload">
+                                <h4>{{ profileForm.nickname || profileForm.username }}</h4>
+                                <p class="text-muted">{{ profileForm.bio || '暂无简介' }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-8">
+                        <div class="card">
+                            <div class="card-body">
+                                <form @submit.prevent="handleUpdateProfile">
+                                    <div class="mb-3">
+                                        <label class="form-label">用户名</label>
+                                        <input type="text" class="form-control" v-model="profileForm.username" disabled>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">昵称</label>
+                                        <input type="text" class="form-control" v-model="profileForm.nickname">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">个人简介</label>
+                                        <textarea class="form-control" v-model="profileForm.bio" rows="3"></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">新密码（留空则不修改）</label>
+                                        <input type="password" class="form-control" v-model="profileForm.newPassword">
+                                        <div class="form-text">密码至少需要8位字符</div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">确认新密码</label>
+                                        <input type="password" class="form-control" v-model="profileForm.confirmNewPassword">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">当前密码（修改信息需要）</label>
+                                        <input type="password" class="form-control" v-model="profileForm.currentPassword" required>
+                                    </div>
+                                    <div class="d-grid gap-2">
+                                        <button type="submit" class="btn btn-primary">保存更改</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 博客详情 -->
+            <div v-if="currentView === 'post'">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h2 class="card-title">{{ currentPost.title }}</h2>
+                        <div class="d-flex align-items-center mb-3">
+                            <img :src="currentPost.author.avatar || 'https://via.placeholder.com/40'" class="rounded-circle me-2" width="40" height="40">
+                            <div>
+                                <div>{{ currentPost.author.nickname || currentPost.author.username }}</div>
+                                <small class="text-muted">发布于 {{ formatDate(currentPost.created_at) }}</small>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <span class="badge bg-secondary me-1" v-for="tag in currentPost.tags" :key="tag">{{ tag }}</span>
+                        </div>
+                        <div class="post-content" v-html="compiledMarkdown"></div>
+                        
+                        <!-- 代码运行区域（可选） -->
+                        <div v-if="hasCodeBlocks" class="mt-4">
+                            <h5>代码示例</h5>
+                            <div v-for="(code, index) in extractedCode" :key="index" class="mb-4">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <small class="text-muted">{{ code.language }}</small>
+                                    <button class="btn btn-sm btn-outline-secondary" @click="copyCode(code.content)">
+                                        <i class="mdi mdi-content-copy"></i> 复制
+                                    </button>
+                                </div>
+                                <pre><code :class="'language-' + code.language">{{ code.content }}</code></pre>
+                                <button v-if="code.language === 'javascript'" class="btn btn-sm btn-primary mt-2" @click="runCode(code.content)">运行代码</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 页脚 -->
+        <footer class="bg-light py-4 mt-5">
+            <div class="container text-center">
+                <p class="mb-0">本网站由CCSDN提供技术支持，资料仅供学习交流，勿作他用</p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Vue.js 和必要的库 -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.2.47/dist/vue.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@4.2.12/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.7.0/build/highlight.min.js"></script>
+    
+    <script>
+        const { createApp, ref, computed, onMounted, watch } = Vue;
+        
+        createApp({
+            setup() {
+                // 应用状态
+                const currentView = ref('home');
+                const isAuthenticated = ref(false);
+                const user = ref({});
+                const posts = ref([]);
+                const currentPost = ref(null);
+                const compiledMarkdown = ref('');
+                const extractedCode = ref([]);
+                const hasCodeBlocks = ref(false);
+                const searchResults = ref([]);
+                const API_BASE_URL = 'http://192.168.1.101:8000/api'; // Django 后端 API 基础路径
+                
+                // 表单数据
+                const loginForm = ref({
+                    username: '',
+                    password: ''
+                });
+                
+                const registerForm = ref({
+                    username: '',
+                    password: '',
+                    confirmPassword: ''
+                });
+                
+                const postForm = ref({
+                    title: '',
+                    description: '',
+                    tags: '',
+                    content: '',
+                    files: []
+                });
+                
+                const profileForm = ref({
+                    username: '',
+                    nickname: '',
+                    bio: '',
+                    avatar: '',
+                    newPassword: '',
+                    confirmNewPassword: '',
+                    currentPassword: ''
+                });
+                
+                const searchQuery = ref('');
+                const advancedSearch = ref(false);
+                const searchStartDate = ref('');
+                const searchEndDate = ref('');
+                const searchSort = ref('newest');
+                
+                // 初始化Markdown编辑器
+                let simpleMDE;
+                onMounted(() => {
+                    // 检查用户登录状态
+                    checkAuth();
+                    
+                    // 加载博客列表
+                    fetchPosts();
+                    
+                    // 初始化Markdown编辑器
+                    if (document.getElementById('postContent')) {
+                        simpleMDE = new SimpleMDE({
+                            element: document.getElementById('postContent'),
+                            spellChecker: false,
+                            autosave: {
+                                enabled: false
+                            },
+                            placeholder: '使用Markdown格式编写内容...',
+                            hideIcons: ['side-by-side', 'fullscreen']
+                        });
+                    }
+                    
+                    // 初始化代码高亮
+                    hljs.highlightAll();
+                });
+                
+                // 检查用户认证状态
+                const checkAuth = async () => {
+                    try {
+                        const response = await axios.get('/api/auth/check');
+                        isAuthenticated.value = true;
+                        user.value = response.data.user;
+                        profileForm.value = { ...response.data.user };
+                    } catch (error) {
+                        isAuthenticated.value = false;
+                        user.value = {};
+                    }
+                };
+                
+                // 获取博客列表
+                const fetchPosts = async () => {
+                    try {
+                        const response = await axios.get('/api/posts');
+                        posts.value = response.data.posts;
+                    } catch (error) {
+                        console.error('获取博客列表失败:', error);
+                    }
+                };
+                
+                // 登录处理
+                const handleLogin = async () => {
+    try {
+        // 调用后端登录接口
+        const response = await axios.post(`${API_BASE_URL}/users/login/`, {
+            username: loginForm.value.username, // 用户名
+            password: loginForm.value.password  // 密码
+        }, );
+
+        // 登录成功后处理
+        isAuthenticated.value = true; // 更新登录状态
+        user.value = response.data.user; // 保存用户信息
+        profileForm.value = { ...response.data.user }; // 更新个人资料表单
+        currentView.value = 'profile'; // 切换到个人中心
+        loginForm.value = { username: '', password: '' }; // 清空表单
+        alert('登录成功！');
+    } catch (error) {
+        // 登录失败处理
+        alert('登录失败: ' + (error.response?.data?.error || error.message));
+    }
+};
+                
+                // 注册处理
+                const handleRegister = async () => {
+                    if (registerForm.value.password.length < 8) {
+                        alert('密码至少需要8位字符');
+                        return;
+                    }
+                    
+                    if (registerForm.value.password !== registerForm.value.confirmPassword) {
+                        alert('两次输入的密码不一致');
+                        return;
+                    }
+                    
+                    try {
+                        const response = await axios.post(`${API_BASE_URL}/users/create/`, {
+                            username: registerForm.value.username,
+                            password: registerForm.value.password
+                        });
+                        
+                        alert('注册成功，请登录');
+                        currentView.value = 'login';
+                        
+                        // 清空表单
+                        registerForm.value = { username: '', password: '', confirmPassword: '' };
+                    } catch (error) {
+                        alert('注册失败: ' + (error.response?.data?.message || error.message));
+                    }
+                };
+                
+                // 退出登录
+                const logout = async () => {
+                    try {
+                        await axios.post('/api/auth/logout');
+                        isAuthenticated.value = false;
+                        user.value = {};
+                        currentView.value = 'home';
+                    } catch (error) {
+                        console.error('退出登录失败:', error);
+                    }
+                };
+                
+                // 创建博客
+                const handleCreatePost = async () => {
+                    if (!postForm.value.title || !postForm.value.description || !simpleMDE.value()) {
+                        alert('请填写所有必填字段');
+                        return;
+                    }
+                    
+                    try {
+                        const formData = new FormData();
+                        formData.append('title', postForm.value.title);
+                        formData.append('description', postForm.value.description);
+                        formData.append('content', simpleMDE.value());
+                        formData.append('tags', postForm.value.tags);
+                        
+                        // 添加文件
+                        for (let i = 0; i < postForm.value.files.length; i++) {
+                            formData.append('files', postForm.value.files[i]);
+                        }
+                        
+                        const response = await axios.post('/api/posts', formData, {
+                            headers: {
+                                'Content-Type': 'multipart/form-data'
+                            }
+                        });
+                        
+                        alert('博客创建成功');
+                        currentView.value = 'home';
+                        fetchPosts();
+                        
+                        // 清空表单
+                        postForm.value = { title: '', description: '', tags: '', content: '', files: [] };
+                        simpleMDE.value('');
+                    } catch (error) {
+                        alert('创建博客失败: ' + (error.response?.data?.message || error.message));
+                    }
+                };
+                
+                // 文件上传处理
+                const handleFileUpload = (event) => {
+                    postForm.value.files = Array.from(event.target.files);
+                };
+                
+                // 头像上传处理
+                const handleAvatarUpload = (event) => {
+                    const file = event.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            profileForm.value.avatar = e.target.result;
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                };
+                
+                // 更新个人资料
+                const handleUpdateProfile = async () => {
+                    if (profileForm.value.newPassword && profileForm.value.newPassword.length < 8) {
+                        alert('密码至少需要8位字符');
+                        return;
+                    }
+                    
+                    if (profileForm.value.newPassword !== profileForm.value.confirmNewPassword) {
+                        alert('两次输入的新密码不一致');
+                        return;
+                    }
+                    
+                    try {
+                        const formData = new FormData();
+                        formData.append('nickname', profileForm.value.nickname);
+                        formData.append('bio', profileForm.value.bio);
+                        formData.append('currentPassword', profileForm.value.currentPassword);
+                        
+                        if (profileForm.value.newPassword) {
+                            formData.append('newPassword', profileForm.value.newPassword);
+                        }
+                        
+                        // 如果有新头像
+                        if (profileForm.value.avatar && profileForm.value.avatar.startsWith('data:image')) {
+                            const blob = await fetch(profileForm.value.avatar).then(r => r.blob());
+                            formData.append('avatar', blob, 'avatar.jpg');
+                        }
+                        
+                        const response = await axios.put('/api/user/profile', formData, {
+                            headers: {
+                                'Content-Type': 'multipart/form-data'
+                            }
+                        });
+                        
+                        alert('资料更新成功');
+                        user.value = response.data.user;
+                        profileForm.value = { ...response.data.user };
+                    } catch (error) {
+                        alert('更新资料失败: ' + (error.response?.data?.message || error.message));
+                    }
+                };
+                
+                // 搜索博客
+                const handleSearch = async () => {
+                    try {
+                        const params = {
+                            query: searchQuery.value
+                        };
+                        
+                        if (advancedSearch.value) {
+                            params.start_date = searchStartDate.value;
+                            params.end_date = searchEndDate.value;
+                            params.sort = searchSort.value;
+                        }
+                        
+                        const response = await axios.get('/api/posts/search', { params });
+                        searchResults.value = response.data.results;
+                    } catch (error) {
+                        console.error('搜索失败:', error);
+                        searchResults.value = [];
+                    }
+                };
+                
+                // 查看博客详情
+                const viewPost = async (postId) => {
+                    try {
+                        const response = await axios.get(`/api/posts/${postId}`);
+                        currentPost.value = response.data.post;
+                        compiledMarkdown.value = marked.parse(currentPost.value.content);
+                        
+                        // 提取代码块
+                        extractCodeBlocks(currentPost.value.content);
+                        
+                        currentView.value = 'post';
+                        
+                        // 高亮代码
+                        Vue.nextTick(() => {
+                            document.querySelectorAll('pre code').forEach((block) => {
+                                hljs.highlightElement(block);
+                            });
+                        });
+                    } catch (error) {
+                        console.error('获取博客详情失败:', error);
+                    }
+                };
+                
+                // 提取Markdown中的代码块
+                const extractCodeBlocks = (markdown) => {
+                    const codeBlocks = [];
+                    const regex = /```(\w+)?\n([\s\S]+?)\n```/g;
+                    let match;
+                    
+                    while ((match = regex.exec(markdown)) !== null) {
+                        codeBlocks.push({
+                            language: match[1] || 'plaintext',
+                            content: match[2]
+                        });
+                    }
+                    
+                    extractedCode.value = codeBlocks;
+                    hasCodeBlocks.value = codeBlocks.length > 0;
+                };
+                
+                // 复制代码
+                const copyCode = (code) => {
+                    navigator.clipboard.writeText(code).then(() => {
+                        alert('代码已复制到剪贴板');
+                    }).catch(err => {
+                        console.error('复制失败:', err);
+                    });
+                };
+                
+                // 运行JavaScript代码（可选）
+                const runCode = (code) => {
+                    try {
+                        // 注意：实际项目中应该使用沙箱环境运行代码
+                        // 这里只是简单演示
+                        const result = eval(code);
+                        alert('代码运行结果: ' + result);
+                    } catch (error) {
+                        alert('代码运行错误: ' + error.message);
+                    }
+                };
+                
+                // 格式化日期
+                const formatDate = (dateString) => {
+                    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+                    return new Date(dateString).toLocaleDateString('zh-CN', options);
+                };
+                
+                return {
+                    currentView,
+                    isAuthenticated,
+                    user,
+                    posts,
+                    currentPost,
+                    compiledMarkdown,
+                    extractedCode,
+                    hasCodeBlocks,
+                    searchResults,
+                    loginForm,
+                    registerForm,
+                    postForm,
+                    profileForm,
+                    searchQuery,
+                    advancedSearch,
+                    searchStartDate,
+                    searchEndDate,
+                    searchSort,
+                    handleLogin,
+                    handleRegister,
+                    logout,
+                    handleCreatePost,
+                    handleFileUpload,
+                    handleAvatarUpload,
+                    handleUpdateProfile,
+                    handleSearch,
+                    viewPost,
+                    copyCode,
+                    runCode,
+                    formatDate
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
